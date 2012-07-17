@@ -1,0 +1,101 @@
+Odin
+----
+
+Odin is an SDN framework programmable enterprise WLANs. It provides
+a platform for developing typical enterprise WLAN services such as
+mobility managers, and load balancers as "network applications".
+
+
+Requirements
+------------
+
+For the agent/AP:
+
+- Click Modular Router.
+- Open vSwitch.
+- An ath9k driver based WiFi card.
+
+
+Building/Installation
+---------------------
+
+Running Odin implies setting up the Odin master, and Odin agents.
+
+If you cloned Odin from the git repository, pull the individual submodules:
+
+$: git clone http://github.com/lalithsuresh/odin
+$: cd odin
+$: git submodule init
+$: git submodule update
+
+
+To build the master (which is built as an application on top of Floodlight),
+do the following:
+
+$: cd odin-master
+$: ant
+
+You should find floodlight.jar inside target/
+
+Before building the agent, apply the patch in odin-driver-patches to your
+Linux kernel ath9k driver code.
+
+To build the agent, copy the files in odin-agent/src/ to your Click source's
+/elements/local folder, then build Click.
+
+$: cd odin-agent
+$: cp src/* <click-folder>/elements/local
+
+Now build Click using your cross compiler. Don't forget to pass the --enable-
+local flag to Click's configure script.
+
+Generate a Click file for the agent, using your preferred values for the
+options:
+
+$: python agent-click-file-gen.py <AP_CHANNEL> <QUEUE_SIZE> \
+ <HW_ADDR_OF_WIFI_INTERFACE> <ODIN_MASTER_IP> <ODIN_MASTER_PORT>
+   > agent.click
+
+
+Running Odin
+------------
+
+The master is to be run on a central server that has IP reachability to all
+APs in the system.
+
+To run the master:
+
+$: java -jar floodlight.jar
+
+
+To run the agents, first instantiate Open vSwitch and have it connect to the
+Floodlight controller from above. Next, instantiate a monitor device:
+
+# If on OpenWRT Backfire
+
+$: iw phy phy0 interface add mon0 set type monitor
+$: iw dev wlan0 set channel <required-channel>
+$: ifconfig mon0 up
+
+Then move the agent.click file generated through the click file generator to
+the AP, and run the following:
+
+$: click-align agent.click | click &
+
+(Make sure agent.click specifies the same channel as being used by the monitor
+device.)
+
+Click should have instantiated a tap device named 'ap', which should be added
+to Open vSwitch' datapath:
+
+$: ovs-dpctl add-if dp0 ap
+
+
+Wait a few seconds for the agent to successfully connect to the master.
+
+
+References
+----------
+
+The system is described in the following Masters' thesis:
+http://lalithsuresh.files.wordpress.com/2011/04/lalith-thesis.pdf
