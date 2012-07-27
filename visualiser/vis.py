@@ -21,6 +21,17 @@ def on_tooltip (item, x, y, keyboard_mode, tooltip):
     tooltip.set_text(item.get_data("tooltip"))
     return True
 
+def on_button_press(item, target_item, event):
+
+    path = item.get_data("path_object")
+
+    if (path.props.visibility == goocanvas.ITEM_INVISIBLE):
+        path.props.visibility = goocanvas.ITEM_VISIBLE
+    else:
+        path.props.visibility = goocanvas.ITEM_INVISIBLE
+
+    path.request_update()
+        
 
 def fetch_agent_data_map ():
     command = "http://" + MASTER_IP + ":" + MASTER_REST_PORT + AGENT_RESOURCE
@@ -87,6 +98,7 @@ def setup_canvas (canvas):
         agent_item_map[each] = item
 
         i += 1
+        item.set_data ("coords", (offset, 200))
         point_map[each] = [offset, 300]
 
     # Keep master above the lines
@@ -101,16 +113,30 @@ def setup_canvas (canvas):
     # as so.
     for each in client_map.keys():
         if (client_map[each]["ipAddress"] != "0.0.0.0"):
-        #     color = "yellow"
-        # else:
-        #     color = "green"
             color = "green"
             if (client_map[each]["agent"] is not None):
-                item = create_focus_elipse (canvas, point_map["/" + client_map[each]["agent"]][0], point_map["/" + client_map[each]["agent"]][1], 15, 15, color, "client-" + each)
+                x = point_map["/" + client_map[each]["agent"]][0]
+                y = point_map["/" + client_map[each]["agent"]][1]
+
+                item = create_focus_elipse (canvas, x, y, 15, 15, color, "client-" + each)
+                
+                agent = agent_item_map["/" + client_map[each]["agent"]]
+
+                if (agent != None):
+                    path = goocanvas.Path(parent = canvas.get_root_item(),
+                                       data="M %s %s L %s %s" % (agent.get_data("coords")[0], agent.get_data("coords")[1], x, y))
+                    item.set_data ("path_object", path)
+                    item.set_data ("my_coords", (x, y))
+                    path.props.visibility = goocanvas.ITEM_INVISIBLE
+
+                agent.raise_(None)
+                item.raise_(None)
+
                 client_item_map[each] = item
                 point_map["/" + client_map[each]["agent"]][1] += 60
                 update_client_tooltip (item, each, client_map[each])
                 item.connect ("query_tooltip",  on_tooltip)
+                item.connect ("button_press_event",  on_button_press)
 
     return
 
@@ -136,14 +162,40 @@ def update_canvas (canvas):
         if (each in client_item_map):
             item = client_item_map[each]
             update_client_tooltip (item, each, client_map[each])
-            item.props.fill_color = color
+
+            agent = agent_item_map["/" + client_map[each]["agent"]]
+
+            if (agent != None):
+                item.get_data("path_object").props.data = "M %s %s L %s %s" % (agent.get_data("coords")[0], 
+                                                                                agent.get_data("coords")[1],
+                                                                                item.get_data("my_coords")[0], 
+                                                                                item.get_data("my_coords")[1])
+                agent.raise_(None)
+                item.get_data("path_object").request_update()
+
             item.request_update()
         else:
-            item = create_focus_elipse (canvas, point_map["/" + client_map[each]["agent"]][0], point_map["/" + client_map[each]["agent"]][1], 15, 15, color, "client-" + each)
+            x = point_map["/" + client_map[each]["agent"]][0]
+            y = point_map["/" + client_map[each]["agent"]][1]
+            item = create_focus_elipse (canvas, x, y, 15, 15, color, "client-" + each)
+
+            agent = agent_item_map["/" + client_map[each]["agent"]]
+
+            if (agent != None):
+                path = goocanvas.Path(parent = canvas.get_root_item(),
+                                       data="M %s %s L %s %s" % (agent.get_data("coords")[0], agent.get_data("coords")[1], x, y))
+                item.set_data ("path_object", path)
+                item.set_data ("my_coords", (x, y))
+                path.props.visibility = goocanvas.ITEM_INVISIBLE
+
+            agent.raise_(None)
+            item.raise_(None)
+
             client_item_map[each] = item
             point_map["/" + client_map[each]["agent"]][1] += 60
             update_client_tooltip (item, each, client_map[each])
             item.connect ("query_tooltip",  on_tooltip)
+            item.connect ("button_press_event",  on_button_press)
 
     threading.Timer (1, update_canvas, [canvas]).start()
 
