@@ -1,10 +1,11 @@
+import gobject
 import goocanvas
 import gtk
 import urllib2
 import json
 import time
 import threading
-
+import rsvg
 
 MASTER_IP = "172.17.255.103"
 MASTER_REST_PORT = "8080"
@@ -16,6 +17,109 @@ CANVAS_WIDTH = 1000
 master = None
 agent_item_map = {}
 client_item_map =  {}
+
+
+
+class CustomSvgItem(goocanvas.ItemSimple):
+    # setup our custom properties
+    __gproperties__ = {
+        'x': (float,                                # property type
+              'X',                                  # property nick name
+              'The x coordinate of a SVG image',    # property description
+              0,                                    # property minimum value
+              10e6,                                 # property maximum value
+              0,                                    # property default value
+              gobject.PARAM_READWRITE),             # property flags
+
+        'y': (float,
+              'Y',
+              'The y coordinate of a SVG image',
+              0,
+              10e6,
+              0,
+              gobject.PARAM_READWRITE),
+
+        'width': (float,
+                  'Width',
+                  'The width of the SVG Image',
+                  0,
+                  10e6,
+                  0,
+                  gobject.PARAM_READABLE),
+
+        'height': (float,
+                   'Height',
+                   'The width of the SVG Image',
+                   0,
+                   10e6,
+                   0,
+                   gobject.PARAM_READABLE),
+        }
+    
+    def __init__(self, x, y, handle, **kwargs):
+        super(CustomSvgItem, self).__init__(**kwargs)
+        
+        self.x = x
+        self.y = y
+        
+        self.width = handle.props.width
+        self.height = handle.props.height
+        
+        self.handle = handle
+
+    def do_set_property(self, pspec, value):
+        if pspec.name == 'x':
+            self.x = value
+            
+            # make sure we update the display
+            self.changed(True)
+        
+        elif pspec.name == 'y':
+            self.y = value
+            
+            # make sure we update the display
+            self.changed(True)
+        
+        else:
+            raise AttributeError, 'unknown property %s' % pspec.name
+
+    def do_get_property(self, pspec):
+        if pspec.name == 'x':
+            return self.x
+
+        elif pspec.name == 'y':
+            return self.y
+
+        elif pspec.name == 'width':
+            return self.width
+
+        elif pspec.name == 'height':
+            return self.height
+
+        else:
+            raise AttributeError, 'unknown property %s' % pspec.name
+    
+    def do_simple_paint(self, cr, bounds):
+        matrix = cr.get_matrix()
+        matrix.translate(self.x, self.y)
+        cr.set_matrix(matrix)
+        self.handle.render_cairo(cr)
+
+    def do_simple_update(self, cr):
+        self.bounds_x1 = float(self.x)
+        self.bounds_y1 = float(self.y)
+        self.bounds_x2 = float(self.x + self.width)
+        self.bounds_y2 = float(self.y + self.height)
+
+    def do_simple_is_item_at(self, x, y, cr, is_pointer_event):
+        if ((x < self.x) or (x > self.x + self.width)) or ((y < self.y) or (y > self.y + self.height)):
+            return False
+        else:    
+            return True
+
+gobject.type_register(CustomSvgItem)
+
+
 
 def on_tooltip (item, x, y, keyboard_mode, tooltip):
     tooltip.set_text(item.get_data("tooltip"))
@@ -48,18 +152,34 @@ def fetch_client_data_map ():
 
 
 
-def create_focus_elipse (canvas, x, y, width, height, color, name):
-    root = canvas.get_root_item ()
-    item = goocanvas.Ellipse (parent = root,
-                                  center_x = x,
-                                  center_y = y,
-                                  radius_x = width,
-                                  radius_y = height,
-                                  fill_color = color,
-                                  can_focus = True)
-    item.set_data ("id", name)
+#def create_focus_elipse (canvas, x, y, width, height, color, name):
+#    root = canvas.get_root_item ()
+#    item = goocanvas.Ellipse (parent = root,
+#                                  center_x = x,
+#                                  center_y = y,
+#                                  radius_x = width,
+#                                  radius_y = height,
+#                                  fill_color = color,
+#                                  can_focus = True)
+#    item.set_data ("id", name)
+#
+#    return item
 
-    return item
+def create_focus_image (canvas, x_, y_, image_file, name):
+    root = canvas.get_root_item ()
+     
+    handle = rsvg.Handle(image_file)
+
+    svgitem = CustomSvgItem(x=x_,
+                            y=y_,
+                            handle=handle,
+                            parent=root)
+
+    svgitem.set_data ("id", name)
+
+    return svgitem
+
+
 
 
 def update_client_tooltip (item, node_mac_addr, props_map):
@@ -79,7 +199,7 @@ def update_client_tooltip (item, node_mac_addr, props_map):
 def setup_canvas (canvas):
     global master, agent_item_map, client_item_map, point_map
 
-    master = create_focus_elipse (canvas, CANVAS_WIDTH/2.0, 80, 30, 30, "blue", "Master")
+    master = create_focus_image (canvas, CANVAS_WIDTH/2.0 - 30, 80 - 60, "master.svg", "Master")
 
     # Get list of agents from master
     agent_map = fetch_agent_data_map ()
@@ -94,7 +214,8 @@ def setup_canvas (canvas):
         path = goocanvas.Path(parent = canvas.get_root_item(),
                                   data="M %s %s L %s %s" % (CANVAS_WIDTH/2.0, 80, offset, 200))
 
-        item = create_focus_elipse (canvas, offset, 200, 30, 30, "red", "agent")
+        #item = create_focus_elipse (canvas, offset, 200, 30, 30, "red", "agent")
+        item = create_focus_image (canvas, offset - 50, 150, "ap.svg", "agent")
         agent_item_map[each] = item
 
         i += 1
@@ -118,7 +239,7 @@ def setup_canvas (canvas):
                 x = point_map["/" + client_map[each]["agent"]][0]
                 y = point_map["/" + client_map[each]["agent"]][1]
 
-                item = create_focus_elipse (canvas, x, y, 15, 15, color, "client-" + each)
+                item = create_focus_image (canvas, x - 20, y - 20, "client.svg", "client-" + each)
                 
                 agent = agent_item_map["/" + client_map[each]["agent"]]
 
@@ -204,7 +325,7 @@ def create_focus_page ():
     vbox = gtk.VBox (False, 4)
     vbox.set_border_width (4)
 
-    label = gtk.Label ("Odin: brought to you by Shark, Shark, and Sharks (TM)")
+    label = gtk.Label ("Odin: brought to you by the Berlin Open Wireless Lab (BOWL)")
     vbox.pack_start (label, False, False, 0)
 
     scrolled_win = gtk.ScrolledWindow ()
