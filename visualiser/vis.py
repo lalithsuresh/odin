@@ -9,7 +9,7 @@ import rsvg
 
 MASTER_IP = "172.17.255.103"
 MASTER_REST_PORT = "8080"
-CLIENT_RESOURCE = "/odin/clients/json"
+CLIENT_RESOURCE = "/odin/clients/connected/json"
 AGENT_RESOURCE = "/odin/agents/json"
 SPACING = 10
 CANVAS_WIDTH = 1000
@@ -268,9 +268,9 @@ def update_canvas (canvas):
     agent_map = fetch_agent_data_map ()
     client_map = fetch_client_data_map ()
 
-    for each in agent_map.keys():
-        if (each in agent_item_map):
-            item = agent_item_map[each]
+    #for each in agent_map.keys():
+    #    if (each in agent_item_map):
+    #        item = agent_item_map[each]
 
     for each in client_map.keys():
         color = "green"
@@ -291,14 +291,14 @@ def update_canvas (canvas):
                                                                                 agent.get_data("coords")[1],
                                                                                 item.get_data("my_coords")[0], 
                                                                                 item.get_data("my_coords")[1])
-                agent.raise_(None)
+                #agent.raise_(None)
                 item.get_data("path_object").request_update()
 
             item.request_update()
         else:
             x = point_map["/" + client_map[each]["agent"]][0]
             y = point_map["/" + client_map[each]["agent"]][1]
-            item = create_focus_elipse (canvas, x, y, 15, 15, color, "client-" + each)
+            item = create_focus_image (canvas, x, y, "client.svg", "client-" + each)
 
             agent = agent_item_map["/" + client_map[each]["agent"]]
 
@@ -309,8 +309,8 @@ def update_canvas (canvas):
                 item.set_data ("my_coords", (x, y))
                 path.props.visibility = goocanvas.ITEM_INVISIBLE
 
-            agent.raise_(None)
-            item.raise_(None)
+            #item.raise_(None)
+            #agent.raise_(None)
 
             client_item_map[each] = item
             point_map["/" + client_map[each]["agent"]][1] += 60
