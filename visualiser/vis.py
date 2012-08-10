@@ -7,7 +7,7 @@ import time
 import threading
 import rsvg
 
-MASTER_IP = "172.17.255.103"
+MASTER_IP = "172.17.1.85"
 MASTER_REST_PORT = "8080"
 CLIENT_RESOURCE = "/odin/clients/connected/json"
 AGENT_RESOURCE = "/odin/agents/json"
@@ -134,7 +134,7 @@ def on_button_press(item, target_item, event):
     else:
         path.props.visibility = goocanvas.ITEM_INVISIBLE
 
-    path.request_update()
+    #path.request_update()
         
 
 def fetch_agent_data_map ():
@@ -256,7 +256,7 @@ def setup_canvas (canvas):
                 client_item_map[each] = item
                 point_map["/" + client_map[each]["agent"]][1] += 60
                 update_client_tooltip (item, each, client_map[each])
-                item.connect ("query_tooltip",  on_tooltip)
+                #item.connect ("query_tooltip",  on_tooltip)
                 item.connect ("button_press_event",  on_button_press)
 
     return
@@ -281,6 +281,7 @@ def update_canvas (canvas):
             continue
 
         if (each in client_item_map):
+          
             item = client_item_map[each]
             update_client_tooltip (item, each, client_map[each])
 
@@ -295,30 +296,31 @@ def update_canvas (canvas):
                 item.get_data("path_object").request_update()
 
             item.request_update()
-        else:
-            x = point_map["/" + client_map[each]["agent"]][0]
-            y = point_map["/" + client_map[each]["agent"]][1]
-            item = create_focus_image (canvas, x, y, "client.svg", "client-" + each)
+        #else:
+        #    print each, client_map, point_map
+            #x = point_map["/" + client_map[each]["agent"]][0]
+            #y = point_map["/" + client_map[each]["agent"]][1]
+            #item = create_focus_image (canvas, x, y, "client.svg", "client-" + each)
 
-            agent = agent_item_map["/" + client_map[each]["agent"]]
+            #agent = agent_item_map["/" + client_map[each]["agent"]]
 
-            if (agent != None):
-                path = goocanvas.Path(parent = canvas.get_root_item(),
-                                       data="M %s %s L %s %s" % (agent.get_data("coords")[0], agent.get_data("coords")[1], x, y))
-                item.set_data ("path_object", path)
-                item.set_data ("my_coords", (x, y))
-                path.props.visibility = goocanvas.ITEM_INVISIBLE
+            #if (agent != None):
+            #    path = goocanvas.Path(parent = canvas.get_root_item(),
+            #                           data="M %s %s L %s %s" % (agent.get_data("coords")[0], agent.get_data("coords")[1], x, y))
+            #    item.set_data ("path_object", path)
+            #    item.set_data ("my_coords", (x, y))
+            #    path.props.visibility = goocanvas.ITEM_INVISIBLE
 
-            #item.raise_(None)
-            #agent.raise_(None)
+            ##item.raise_(None)
+            ##agent.raise_(None)
 
-            client_item_map[each] = item
-            point_map["/" + client_map[each]["agent"]][1] += 60
-            update_client_tooltip (item, each, client_map[each])
-            item.connect ("query_tooltip",  on_tooltip)
-            item.connect ("button_press_event",  on_button_press)
+            #client_item_map[each] = item
+            #point_map["/" + client_map[each]["agent"]][1] += 60
+            #update_client_tooltip (item, each, client_map[each])
+            ##item.connect ("query_tooltip",  on_tooltip)
+            #item.connect ("button_press_event",  on_button_press)
 
-    threading.Timer (1, update_canvas, [canvas]).start()
+    threading.Timer (1.0, update_canvas, [canvas]).start()
 
 
 def create_focus_page ():
@@ -337,13 +339,13 @@ def create_focus_page ():
     canvas.set_flags (gtk.CAN_FOCUS)
     canvas.set_size_request (CANVAS_WIDTH, 10000)
     canvas.set_bounds (0, 0, CANVAS_WIDTH, 10000)
-    canvas.props.has_tooltip = True
+    canvas.props.has_tooltip = False
 
     scrolled_win.add (canvas)
     setup_canvas (canvas)
 
     # start canvas update thread
-    threading.Timer (1, update_canvas, [canvas]).start()
+    threading.Timer (1.0, update_canvas, [canvas]).start()
 
     return vbox
 
