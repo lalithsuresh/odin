@@ -1,5 +1,5 @@
 Odin
-----
+====
 
 Odin is an SDN framework programmable enterprise WLANs. It provides
 a platform for developing typical enterprise WLAN services such as
@@ -60,13 +60,53 @@ $: python agent-click-file-gen.py <AP_CHANNEL> <QUEUE_SIZE> \
 Running Odin
 ------------
 
+Master
+------
+
 The master is to be run on a central server that has IP reachability to all
-APs in the system.
+APs in the system. The master expects the following configuration parameter
+to be set in the floodlight configuration file:
+
+- net.floodlightcontroller.odin.master.OdinMaster.poolFile:
+This should point to a pool file, which are essentially slices. An example
+poolfile is as follows:
+
+# Pool-1
+NAME pool-1
+NODES 172.17.1.13 172.17.1.21 172.17.1.29
+NETWORKS odin
+APPLICATIONS net.floodlightcontroller.odin.applications.OdinMobilityManager
+
+# Pool-2
+NAME pool-2
+NODES 172.17.1.29 172.17.1.37 172.17.1.45
+NETWORKS guest-network
+APPLICATIONS net.floodlightcontroller.odin.applications.SimpleLoadBalancer
+
+Each pool is defined by a name, a list of IP address of physical APs, the
+list of SSIDs or NETWORKS to be announced, and a list of applications
+that operate on that pool.
+
+- net.floodlightcontroller.odin.master.OdinMaster.clientList [optional]:
+For testing purposes, if you'd like to assign a static IP to a client
+and have it connect to odin, you need to specify the client's details in a file
+pointed to by this property. An example file looks as follows:
+
+# Example authfile
+00:16:7f:7e:00:00 172.17.4.2 00:1b:1b:7e:00:00 odin-ssid-1
+00:16:7f:7e:00:01 172.17.4.3 00:1b:1b:7e:00:01 odin-ssid-2
+00:16:7f:7e:00:02 172.17.4.4 00:1b:1b:7e:00:02 odin-ssid-3
+
+Each row represents a client's MAC address, its static IP address, its LVAP's
+BSSID, and the SSID that its LVAP will announce.
 
 To run the master:
 
 $: java -jar floodlight.jar
 
+
+Agents
+------
 
 To run the agents, first instantiate Open vSwitch and have it connect to the
 Floodlight controller from above. Next, instantiate a monitor device:
